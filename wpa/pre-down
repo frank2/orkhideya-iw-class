@@ -1,0 +1,46 @@
+#!/bin/bash
+
+source orkhideya-root
+ork_include if
+ork_include iw
+ork_include proc
+ork_include stdlib
+ork_include stdout
+
+_ap="$1"
+_device="$2"
+
+if [ -z "$_ap" ]; then
+   stdout_error "No AP provided."
+   exit 1
+fi
+
+if ! iw_ap_exists "$_ap"; then
+   stdout_error "AP $(stdout_color_wrap main-focused "$_ap") does not exist."
+   exit 2
+fi
+
+if [ -z "$_device" ]; then
+   stdout_error "No device provided."
+   exit 3
+fi
+
+if ! if_dev_exists "$_device"; then
+   stdout_error "Device $(stdout_color_wrap main-focused "$_device") does not exist."
+   exit 4
+fi
+
+_wpa_label="wpa-${_ap}-${_device}"
+
+if ! proc_label_is_running "$_wpa_label"; then
+   stdout_error "wpa_supplicant not running."
+   exit 0
+fi
+
+if ! proc_label_kill "$_wpa_label"; then
+   stdout_error "Couldn't terminate $(stdout_color_wrap main-focused "$_wpa_label")."
+   exit 5
+fi
+
+stdout_normal "Terminated wpa_supplicant for $(stdout_color_wrap main-focused "$_wpa_label")."
+exit 0

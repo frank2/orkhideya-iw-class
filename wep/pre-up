@@ -1,0 +1,64 @@
+#!/bin/bash
+
+source orkhideya-root
+ork_include if
+ork_include iw
+ork_include proc
+ork_include stdlib
+ork_include stdout
+
+_ap="$1"
+_device="$2"
+
+if [ -z "$_ap" ]; then
+   stdout_error "No AP provided."
+   exit 1
+fi
+
+if ! iw_ap_exists "$_ap"; then
+   stdout_error "AP $(stdout_color_wrap main-focused "$_ap") does not exist."
+   exit 2
+fi
+
+if [ -z "$_device" ]; then
+   stdout_error "No device provided."
+   exit 3
+fi
+
+if ! if_dev_exists "$_device"; then
+   stdout_error "Device $(stdout_color_wrap main-focused "$_device") does not exist."
+   exit 4
+fi
+
+if if_dev_is_down "$_device"; then
+   stdout_error "$(stdout_color_wrap main-focused "$_device") is down."
+   exit 5
+fi
+
+if [ "$(iw_dev_get_mode "$_device")" != "managed" ]; then
+   stdout_error "$(stdout_color_wrap main-focused "$_device") not in managed mode."
+   exit 6
+fi
+
+_key="$(iw_ap_key "$_ap")"
+
+if [ -z "$_key" ]; then
+   stdout_error "No WEP key for $(stdout_color_wrap main-focused "$_ap")."
+   exit 7
+fi
+
+_interface="$(if_dev_interface "$_device")"
+
+if [ -z "$_interface" ]; then
+   stdout_error "No interface for $(stdout_color_wrap main-focused "$_interface")."
+   exit 8
+fi
+
+stdout_warning "Setting WEP key for $(stdout_color_wrap main-focused "$_device")."
+if ! iwconfig "$_interface" key "$_key"; then
+   stdout_error "Failed to set WEP key."
+   exit 9
+fi
+
+stdout_normal "WEP connection established via $(stdout_color_wrap main-focused "$_device") connecting to $(stdout_color_wrap main-focused "$_ap")."
+exit 0

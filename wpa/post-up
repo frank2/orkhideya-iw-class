@@ -1,0 +1,68 @@
+#!/bin/bash
+
+source orkhideya-root
+ork_include if
+ork_include iw
+ork_include proc
+ork_include stdlib
+ork_include stdout
+
+_ap="$1"
+_device="$2"
+
+if [ -z "$_ap" ]; then
+   stdout_error "No AP provided."
+   exit 1
+fi
+
+if ! iw_ap_exists "$_ap"; then
+   stdout_error "AP $(stdout_color_wrap main-focused "$_ap") does not exist."
+   exit 2
+fi
+
+if [ -z "$_device" ]; then
+   stdout_error "No device provided."
+   exit 3
+fi
+
+if ! if_dev_exists "$_device"; then
+   stdout_error "Device $(stdout_color_wrap main-focused "$_device") does not exist."
+   exit 4
+fi
+
+if if_dev_is_down "$_device"; then
+   stdout_error "$(stdout_color_wrap main-focused "$_device") is down."
+   exit 5
+fi
+
+if [ "$(iw_dev_get_mode "$_device")" != "managed" ]; then
+   stdout_error "$(stdout_color_wrap main-focused "$_device") not in managed mode."
+   exit 6
+fi
+
+_wpa_config="$(iw_ap_config_file "$_ap")"
+
+if [ -z "$_wpa_config" ]; then
+   stdout_error "No WPA config for $(stdout_color_wrap main-focused "$_ap")."
+   exit 7
+fi
+
+_interface="$(if_dev_interface "$_device")"
+
+if [ -z "$_interface" ]; then
+   stdout_error "No interface for $(stdout_color_wrap main-focused "$_interface")."
+   exit 8
+fi
+
+stdout_warning "Launching wpa_supplicant for $(stdout_color_wrap main-focused "$_device")."
+_wpa_label="wpa-${_ap}-${_device}"
+_wpa_pidfile="$(proc_label_pid_file "$_wpa_label")"
+_wpa_stdout="$(proc_label_stdout_file "$_wpa_label")"
+
+if ! proc_label_spawn "$_wpa_label" wpa_supplicant -i"$_interface" -c"$_wpa_config" -P"$_wpa_pidfile" -B -dd; then
+   stdout_error "Couldn't launch wpa_supplicant."
+   exit 9
+fi
+
+stdout_normal "Launched wpa_supplicant for $(stdout_color_wrap main-focused "$_device") connecting to $(stdout_color_wrap main-focused "$_ap")."
+exit 0
